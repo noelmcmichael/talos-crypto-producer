@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crypto-producer
+  namespace: data-pipeline
+  labels:
+    app: crypto-producer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: crypto-producer
+  template:
+    metadata:
+      labels:
+        app: crypto-producer
+      annotations:
+        prometheus.io/scrape: "false"
+    spec:
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+        runAsNonRoot: true
+      containers:
+      - name: crypto-producer
+        image: harbor.int-talos-poc.pocketcove.net/library/crypto-producer:latest
+        imagePullPolicy: Always
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        env:
+        - name: RUST_LOG
+          value: "crypto_websocket_producer=info"
