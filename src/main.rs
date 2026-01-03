@@ -18,11 +18,30 @@ const SYMBOLS: &[&str] = &[
     "LINK-USD", "UNI-USD", "ATOM-USD", "LTC-USD",
 ];
 
-// RustMQ Message structure
+// RustMQ Message structure (must match RustMQ's message.rs)
 #[derive(Debug, Serialize, Deserialize)]
 struct RustMQMessage {
     key: Vec<u8>,
     value: Vec<u8>,
+    timestamp: u64,
+    #[serde(default)]
+    headers: Vec<(String, String)>,
+}
+
+impl RustMQMessage {
+    fn new(key: Vec<u8>, value: Vec<u8>) -> Self {
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_micros() as u64;
+        
+        Self {
+            key,
+            value,
+            timestamp,
+            headers: Vec::new(),
+        }
+    }
 }
 
 // Coinbase WebSocket messages
@@ -77,10 +96,7 @@ async fn send_to_rustmq(
     value: &[u8],
 ) -> Result<u64, Box<dyn std::error::Error>> {
     // Create RustMQ message
-    let message = RustMQMessage {
-        key: key.to_vec(),
-        value: value.to_vec(),
-    };
+    let message = RustMQMessage::new(key.to_vec(), value.to_vec());
 
     // Serialize message using bincode
     let msg_bytes = bincode::serialize(&message)?;
