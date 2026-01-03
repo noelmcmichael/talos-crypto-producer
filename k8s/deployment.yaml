@@ -5,6 +5,7 @@ metadata:
   namespace: data-pipeline
   labels:
     app: crypto-producer
+    managed-by: argocd
 spec:
   replicas: 1
   selector:
