@@ -11,12 +11,26 @@ const RUSTMQ_HOST: &str = "rustmq-0.rustmq-headless.data-pipeline.svc.cluster.lo
 const RUSTMQ_PORT: u16 = 9092;
 const COINBASE_WS_URL: &str = "wss://ws-feed.exchange.coinbase.com";
 
-// Symbols to track
-const SYMBOLS: &[&str] = &[
+// Default symbols to track (can be overridden by SYMBOLS env var)
+const DEFAULT_SYMBOLS: &[&str] = &[
     "BTC-USD", "ETH-USD", "SOL-USD", "ADA-USD", 
     "DOGE-USD", "MATIC-USD", "AVAX-USD", "DOT-USD",
     "LINK-USD", "UNI-USD", "ATOM-USD", "LTC-USD",
 ];
+
+// Get symbols from env var or use defaults
+fn get_symbols() -> Vec<String> {
+    match std::env::var("SYMBOLS") {
+        Ok(symbols_str) => {
+            symbols_str
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
+        }
+        Err(_) => DEFAULT_SYMBOLS.iter().map(|s| s.to_string()).collect(),
+    }
+}
 
 // RustMQ Message structure (must match RustMQ's message.rs)
 #[derive(Debug, Serialize, Deserialize)]
@@ -125,10 +139,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_env_filter("crypto_websocket_producer=info")
         .init();
 
+    // Get symbols from environment or use defaults
+    let symbols = get_symbols();
+    
     info!("🚀 Crypto WebSocket Producer (Rust) starting...");
     info!("📡 Connecting to: {}", COINBASE_WS_URL);
     info!("📤 RustMQ host: {}:{}", RUSTMQ_HOST, RUSTMQ_PORT);
-    info!("💱 Tracking {} symbols", SYMBOLS.len());
+    info!("💱 Tracking {} symbols: {:?}", symbols.len(), symbols);
 
     // Connect to RustMQ
     let rustmq_addr = format!("{}:{}", RUSTMQ_HOST, RUSTMQ_PORT);
@@ -150,14 +167,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Subscribe to matches channel for all symbols
     let subscribe_msg = SubscribeMessage {
         r#type: "subscribe".to_string(),
-        product_ids: SYMBOLS.iter().map(|s| s.to_string()).collect(),
+        product_ids: symbols.clone(),
         channels: vec!["matches".to_string()],
     };
 
     let subscribe_json = serde_json::to_string(&subscribe_msg)?;
     write.send(WsMessage::Text(subscribe_json)).await?;
 
-    info!("✅ Subscribed to {} symbols", SYMBOLS.len());
+    info!("✅ Subscribed to {} symbols", symbols.len());
     info!("⏳ Waiting for trade messages...\n");
 
     // Statistics
