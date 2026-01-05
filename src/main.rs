@@ -164,11 +164,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (mut write, mut read) = ws_stream.split();
 
-    // Subscribe to matches channel for all symbols
+    // Subscribe to matches AND ticker channels for all symbols
     let subscribe_msg = SubscribeMessage {
         r#type: "subscribe".to_string(),
         product_ids: symbols.clone(),
-        channels: vec!["matches".to_string()],
+        channels: vec!["matches".to_string(), "ticker".to_string()],
     };
 
     let subscribe_json = serde_json::to_string(&subscribe_msg)?;
